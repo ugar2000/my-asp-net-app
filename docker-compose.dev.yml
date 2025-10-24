@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: .
+      target: build
+    container_name: net-app-for-vika-server-dev
+    working_dir: /src
+    command: bash -lc "dotnet watch run --no-launch-profile --project src/Server/NetAppForVika.Server.csproj --urls http://0.0.0.0:5050"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=net_app_for_vika;Username=postgres;Password=postgres
+      ConnectionStrings__Redis: redis:6379
+      MachineLearning__MlNetModelPath: /app/Resources/digit-mnist.zip
+      MachineLearning__OnnxModelPath: /app/Resources/digit.onnx
+      ASPNETCORE_URLS: http://0.0.0.0:5050
+    ports:
+      - "5050:5050"
+    volumes:
+      - .:/src
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    image: node:20
+    container_name: net-app-for-vika-frontend-dev
+    working_dir: /workspace
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:5050
+    volumes:
+      - ./frontend:/workspace
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: net-app-for-vika-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: net_app_for_vika
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: net-app-for-vika-redis-dev
+    command: redis-server --save 20 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data-dev:/data
+
+volumes:
+  postgres-data-dev:
+  redis-data-dev:

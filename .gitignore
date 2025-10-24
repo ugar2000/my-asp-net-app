@@ -1,0 +1,11 @@
+bin/
+obj/
+**/bin/
+**/obj/
+.env
+node_modules/
+.next/
+frontend/.next/
+*.user
+*.suo
+.DS_Store
