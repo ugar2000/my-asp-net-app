@@ -4,12 +4,15 @@ services:
   server:
     build: .
     container_name: net-app-for-vika-server
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=net_app_for_vika;Username=postgres;Password=postgres
       ConnectionStrings__Redis: redis:6379
       MachineLearning__MlNetModelPath: /app/Resources/digit-mnist.zip
       MachineLearning__OnnxModelPath: /app/Resources/digit.onnx
+      AllowedOrigins__0: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      AllowedOrigins__1: ${PUBLIC_ORIGIN_ALT:-http://localhost:8080}
     ports:
       - "8080:8080"
     depends_on:
@@ -17,14 +20,14 @@ services:
       - redis
 
   frontend:
-    image: node:20
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: net-app-for-vika-frontend
-    working_dir: /app
-    command: sh -c "npm install && npm run build && npm run start -- --hostname 0.0.0.0 --port 3000"
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
-    volumes:
-      - ./frontend:/app
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on:
@@ -33,6 +36,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: net-app-for-vika-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -43,6 +47,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: net-app-for-vika-redis
+    restart: unless-stopped
     command: redis-server --save 20 1 --loglevel warning
     volumes:
       - redis-data:/data

@@ -170,3 +170,6 @@ function AdminNewsForm({ onPublished }: { onPublished: () => void }) {
     </div>
   );
 }
+
+//dotnet restore
+// dotnet watch run --project src/Server/NetAppForVika.Server.csproj --urls http://localhost:5050
