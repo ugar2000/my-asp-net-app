@@ -2,39 +2,17 @@
 
 import useSWR from "swr";
 import { getJson, postJson } from "@/lib/api";
-import { NewsArticleDto, NewsArticleSummaryDto, NewsArticleCreateDto } from "@/types/news";
+import { NewsArticleSummaryDto, NewsArticleCreateDto } from "@/types/news";
 import { useAuthStore } from "@/store/auth-store";
-import { useEffect, useMemo, useState } from "react";
-import { marked } from "marked";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 
 const fetcher = (url: string, token?: string) => getJson<NewsArticleSummaryDto[]>(url, token);
 
 export function NewsFeed({ compact = false }: { compact?: boolean } = {}) {
   const { token, roles } = useAuthStore();
   const { data, mutate, isLoading, error } = useSWR(["/api/news", token], ([url, auth]) => fetcher(url, auth ?? undefined));
-  const [selected, setSelected] = useState<NewsArticleDto | null>(null);
   const isAdmin = useMemo(() => roles.includes("Admin"), [roles]);
-
-  const openArticle = async (slug: string) => {
-    try {
-      const article = await getJson<NewsArticleDto>(`/api/news/${slug}`);
-      setSelected(article);
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", `/news#${slug}`);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    if (!compact && typeof window !== "undefined" && window.location.hash) {
-      const slug = window.location.hash.replace("#", "");
-      if (slug) {
-        openArticle(slug);
-      }
-    }
-  }, [compact]);
 
   const articles = compact && data ? data.slice(0, 3) : data;
 
@@ -58,7 +36,7 @@ export function NewsFeed({ compact = false }: { compact?: boolean } = {}) {
         </div>
       )}
 
-      <div className={compact ? "mt-8 space-y-4" : "mt-8 grid gap-6 md:grid-cols-[1.4fr,1fr]"}>
+      <div className={compact ? "mt-8 space-y-4" : "mt-8 grid gap-6 md:grid-cols-1"}>
         <div className="space-y-4">
           {isLoading && <p className="text-slate-400">Завантаження…</p>}
           {error && <p className="text-rose-300">Не вдалося завантажити статті.</p>}
@@ -70,37 +48,13 @@ export function NewsFeed({ compact = false }: { compact?: boolean } = {}) {
                 </p>
                 <h3 className="text-2xl font-semibold text-slate-100">{article.title}</h3>
                 <p className="text-sm text-slate-300">{article.excerpt}</p>
-                {compact ? (
-                  <a className="button-secondary w-fit" href={`/news#${article.slug}`}>
-                    Перейти до статті
-                  </a>
-                ) : (
-                  <button className="button-secondary w-fit" onClick={() => openArticle(article.slug)}>
-                    Читати статтю
-                  </button>
-                )}
+                <Link className="button-secondary w-fit" href={`/news/${article.slug}`}>
+                  {compact ? "Перейти до статті" : "Читати статтю"}
+                </Link>
               </div>
             </article>
           ))}
         </div>
-        {!compact && (
-          <div className="rounded-2xl border border-indigo-500/30 bg-slate-900/70 p-6 text-sm text-slate-200">
-            {selected ? (
-              <div className="prose prose-invert max-w-none">
-                <h3 className="text-2xl font-semibold text-indigo-100">{selected.title}</h3>
-                <p className="text-xs uppercase tracking-[0.4em] text-indigo-300">
-                  {selected.authorName} • {new Date(selected.publishedAtUtc).toLocaleString("uk-UA")}
-                </p>
-                <div
-                  className="mt-4 space-y-4"
-                  dangerouslySetInnerHTML={{ __html: marked.parse(selected.content) }}
-                />
-              </div>
-            ) : (
-              <p className="text-slate-400">Оберіть статтю, щоб переглянути зміст.</p>
-            )}
-          </div>
-        )}
       </div>
     </section>
   );
@@ -170,6 +124,3 @@ function AdminNewsForm({ onPublished }: { onPublished: () => void }) {
     </div>
   );
 }
-
-//dotnet restore
-// dotnet watch run --project src/Server/NetAppForVika.Server.csproj --urls http://localhost:5050

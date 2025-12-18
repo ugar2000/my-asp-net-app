@@ -1,0 +1,38 @@
+name: Deploy to Droplet
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: /opt/net_app_for_vika
+      PUBLIC_ORIGIN: ${{ secrets.PUBLIC_ORIGIN }}
+      PUBLIC_ORIGIN_ALT: ${{ secrets.PUBLIC_ORIGIN_ALT }}
+      NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          envs: DEPLOY_PATH,PUBLIC_ORIGIN,PUBLIC_ORIGIN_ALT,NEXT_PUBLIC_API_BASE_URL
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+
+            git fetch --all --prune
+            git pull --ff-only origin main
+
+            export PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-http://localhost}"
+            export PUBLIC_ORIGIN_ALT="${PUBLIC_ORIGIN_ALT:-http://127.0.0.1}"
+            export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost/api}"
+
+            docker compose pull
+            docker compose up -d --build
+            docker image prune -f
